@@ -1,0 +1,17 @@
+[package]
+name = "stream_throttle"
+version = "0.1.0"
+description = "Provides a Stream combinator, to limit the rate at which items are produced."
+readme = "README.md"
+license = "MIT"
+authors = ["Mike Caines"]
+repository = "https://github.com/mikecaines/stream-throttle"
+categories = ["asynchronous"]
+keywords = ["async", "futures", "stream", "throttle"]
+
+[dependencies]
+failure = "0.1"
+failure_derive = "0.1"
+log = "0.4"
+futures = "0.1"
+tokio-timer = "0.1"
