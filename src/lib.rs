@@ -23,7 +23,6 @@
 //! #
 //! let rate = ThrottleRate::new(5, Duration::new(2, 0));
 //! let pool = ThrottlePool::new(rate, Timer::default());
-//! # let now = Instant::now();
 //!
 //! stream::repeat(())
 //! # .map_err(|_: ()| ()) // just need to declare error type in this simple example
