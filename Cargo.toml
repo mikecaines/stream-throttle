@@ -1,6 +1,6 @@
 [package]
 name = "stream_throttle"
-version = "0.1.0"
+version = "0.1.1"
 description = "Provides a Stream combinator, to limit the rate at which items are produced."
 readme = "README.md"
 license = "MIT"
