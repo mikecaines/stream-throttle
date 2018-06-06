@@ -64,6 +64,6 @@ mod pool;
 mod rate;
 mod stream;
 
-pub use stream::*;
 pub use pool::*;
 pub use rate::*;
+pub use stream::*;
