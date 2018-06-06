@@ -43,47 +43,50 @@ impl ThrottlePool {
 	/// `Throttled` stream. In the process, these futures will drive the `ThrottlePool`,
 	/// freeing up slots.
 	pub fn queue(&self) -> impl Future<Item = (), Error = Error> {
-		let inner = self.inner.clone();
-		let inner2 = self.inner.clone();
-
 		stream::repeat(())
-			.and_then(move |_| {
-				let now = Instant::now();
-				let mut sleep = inner.rate_duration;
+			.and_then({
+				let inner = self.inner.clone();
+				move |_| {
+					let now = Instant::now();
+					let mut sleep = inner.rate_duration;
 
-				for mut slot in &inner.slots {
-					if let Ok(mut slot) = slot.try_lock() {
-						// if the slot's instant is in the past
-						if *slot <= now {
-							// the slot is expired/free
-							// set the slot's new expiry instant to be now + rate.duration
-							*slot = now + inner.rate_duration;
-							return Ok(None); // let the stream end
-						} else {
-							// if the slot's expiry is the earliest one we've encountered, use it
-							sleep = ::std::cmp::min(*slot - now, sleep);
+					for mut slot in &inner.slots {
+						if let Ok(mut slot) = slot.try_lock() {
+							// if the slot's instant is in the past
+							if *slot <= now {
+								// the slot is expired/free
+								// set the slot's new expiry instant to be now + rate.duration
+								*slot = now + inner.rate_duration;
+								return Ok(None); // let the stream end
+							} else {
+								// if the slot's expiry is the earliest one we've encountered, use it
+								sleep = ::std::cmp::min(*slot - now, sleep);
+							}
+						}
+						// else we couldn't lock the mutex
+						else {
+							// just let the stream iterate one item, and try again
+							return Ok(Some(Duration::from_secs(0)));
 						}
 					}
-					// else we couldn't lock the mutex
-					else {
-						// just let the stream iterate one item, and try again
-						return Ok(Some(Duration::from_secs(0)));
+
+					if log_enabled!(::log::Level::Trace) {
+						trace!("Sleeping for {:?}", sleep);
 					}
-				}
 
-				if log_enabled!(::log::Level::Trace) {
-					trace!("Sleeping for {:?}", sleep);
+					Ok(Some(sleep))
 				}
-
-				Ok(Some(sleep))
 			})
 			.take_while(|sleep| Ok(sleep.is_some()))
-			.and_then(move |sleep| {
-				// sleep for the required duration
-				inner2
-					.timer
-					.sleep(sleep.unwrap_or_else(|| Duration::from_secs(0)))
-					.map_err(|e| e.context(ErrorKind::Timer("queue future could not sleep")))
+			.and_then({
+				let inner2 = self.inner.clone();
+				move |sleep| {
+					// sleep for the required duration
+					inner2
+						.timer
+						.sleep(sleep.unwrap_or_else(|| Duration::from_secs(0)))
+						.map_err(|e| e.context(ErrorKind::Timer("queue future could not sleep")))
+				}
 			})
 			.for_each(|_| Ok(()))
 			.from_err()
