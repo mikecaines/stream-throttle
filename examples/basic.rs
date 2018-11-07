@@ -6,13 +6,12 @@ use futures::prelude::*;
 use futures::stream;
 use std::time::{Duration, Instant};
 use stream_throttle::{ThrottlePool, ThrottleRate, ThrottledStream};
-use tokio_timer::Timer;
 
 fn main() -> Result<(), ()> {
 	let rate = ThrottleRate::new(5, Duration::new(2, 0));
 	println!("{:?}", rate);
 
-	let pool = ThrottlePool::new(rate, Timer::default());
+	let pool = ThrottlePool::new(rate);
 
 	let stream1 = {
 		let mut count = 0;

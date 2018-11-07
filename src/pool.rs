@@ -5,23 +5,24 @@ use futures::stream;
 use futures::{Future, Stream};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
-use tokio_timer::Timer;
+use tokio_timer;
 
 /// A clonable object which is used to throttle one or more streams, according to a shared rate.
 #[derive(Clone)]
-pub struct ThrottlePool {
+pub struct ThrottlePool
+{
 	inner: Arc<ThrottlePoolInner>,
 }
 
 #[derive(Debug)]
-struct ThrottlePoolInner {
-	timer: Timer,
+struct ThrottlePoolInner
+{
 	rate_duration: Duration,
 	slots: Vec<Mutex<Instant>>, // expiry times, one for each item in rate.count
 }
 
 impl ThrottlePool {
-	pub fn new(rate: ThrottleRate, timer: Timer) -> Self {
+	pub fn new(rate: ThrottleRate) -> Self {
 		let mut slots = Vec::with_capacity(rate.count());
 		for _ in 0..rate.count() {
 			slots.push(Mutex::new(Instant::now() - rate.duration()));
@@ -29,7 +30,6 @@ impl ThrottlePool {
 
 		Self {
 			inner: Arc::new(ThrottlePoolInner {
-				timer,
 				rate_duration: rate.duration(),
 				slots,
 			}),
@@ -79,12 +79,9 @@ impl ThrottlePool {
 			})
 			.take_while(|sleep| Ok(sleep.is_some()))
 			.and_then({
-				let inner2 = self.inner.clone();
 				move |sleep| {
 					// sleep for the required duration
-					inner2
-						.timer
-						.sleep(sleep.unwrap_or_else(|| Duration::from_secs(0)))
+					tokio_timer::sleep(sleep.unwrap_or_else(|| Duration::from_secs(0)))
 						.map_err(|e| e.context(ErrorKind::Timer("queue future could not sleep")))
 				}
 			})
