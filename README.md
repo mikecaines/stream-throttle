@@ -17,19 +17,22 @@ and not via any sort of buffering.
 ## Example throttling of `Stream`
 ```rust
 let rate = ThrottleRate::new(5, Duration::new(2, 0));
-let pool = ThrottlePool::new(rate, Timer::default());
+let pool = ThrottlePool::new(rate);
 
-stream::repeat(())
+let work = stream::repeat(())
   .throttle(pool)
-  .wait();
+  .for_each(|_| Ok(()));
+  
+tokio::run(work);
 ```
 
 ## Example throttling of `Future`
 ```rust
 let rate = ThrottleRate::new(5, Duration::new(2, 0));
-let pool = ThrottlePool::new(rate, Timer::default());
+let pool = ThrottlePool::new(rate);
 
 pool.queue()
-  .and_then(|_| Ok(()))
-  .wait();
+  .then(|_| Ok(()));
+  
+tokio::run(work);
 ```

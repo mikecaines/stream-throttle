@@ -14,20 +14,21 @@
 //! # extern crate futures;
 //! # extern crate stream_throttle;
 //! # extern crate tokio_timer;
+//! # extern crate tokio;
 //! #
 //! # use futures::prelude::*;
 //! # use futures::stream;
-//! # use std::time::{Duration, Instant};
+//! # use std::time::Duration;
 //! # use stream_throttle::{ThrottlePool, ThrottleRate, ThrottledStream};
-//! # use tokio_timer::Timer;
 //! #
 //! let rate = ThrottleRate::new(5, Duration::new(2, 0));
-//! let pool = ThrottlePool::new(rate, Timer::default());
+//! let pool = ThrottlePool::new(rate);
 //!
-//! stream::repeat(())
-//! # .map_err(|_: ()| ()) // just need to declare error type in this simple example
+//! let work = stream::repeat(())
 //!   .throttle(pool)
-//!   .wait();
+//!   .for_each(|_| Ok(()));
+//!
+//! tokio::run(work);
 //! ```
 //!
 //! ## Example throttling of `Future`
@@ -35,19 +36,20 @@
 //! # extern crate futures;
 //! # extern crate stream_throttle;
 //! # extern crate tokio_timer;
+//! # extern crate tokio;
 //! #
 //! # use futures::prelude::*;
 //! # use futures::future;
 //! # use std::time::Duration;
 //! # use stream_throttle::{ThrottlePool, ThrottleRate, ThrottledStream};
-//! # use tokio_timer::Timer;
 //! #
 //! let rate = ThrottleRate::new(5, Duration::new(2, 0));
-//! let pool = ThrottlePool::new(rate, Timer::default());
+//! let pool = ThrottlePool::new(rate);
 //!
-//! pool.queue()
-//!   .and_then(|_| Ok(()))
-//!   .wait();
+//! let work = pool.queue()
+//!   .then(|_| Ok(()));
+//!
+//! tokio::run(work);
 //! ```
 
 #[macro_use]
