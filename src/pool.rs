@@ -9,14 +9,12 @@ use tokio_timer;
 
 /// A clonable object which is used to throttle one or more streams, according to a shared rate.
 #[derive(Clone)]
-pub struct ThrottlePool
-{
+pub struct ThrottlePool {
 	inner: Arc<ThrottlePoolInner>,
 }
 
 #[derive(Debug)]
-struct ThrottlePoolInner
-{
+struct ThrottlePoolInner {
 	rate_duration: Duration,
 	slots: Vec<Mutex<Instant>>, // expiry times, one for each item in rate.count
 }
@@ -76,16 +74,14 @@ impl ThrottlePool {
 
 					Ok(Some(sleep))
 				}
-			})
-			.take_while(|sleep| Ok(sleep.is_some()))
+			}).take_while(|sleep| Ok(sleep.is_some()))
 			.and_then({
 				move |sleep| {
 					// sleep for the required duration
 					tokio_timer::sleep(sleep.unwrap_or_else(|| Duration::from_secs(0)))
 						.map_err(|e| e.context(ErrorKind::Timer("queue future could not sleep")))
 				}
-			})
-			.for_each(|_| Ok(()))
+			}).for_each(|_| Ok(()))
 			.from_err()
 	}
 }
