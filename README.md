@@ -5,6 +5,7 @@ Provides a
 combinator, to limit the rate at which items are produced.
 
 [![Crates.io](https://img.shields.io/crates/v/stream_throttle.svg)](https://crates.io/crates/stream_throttle)
+[![API Documentation](https://docs.rs/stream_throttle/badge.svg)](https://docs.rs/stream_throttle/)
 
 ## Key Features
 - Throttling is implemented via
