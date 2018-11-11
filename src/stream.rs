@@ -32,7 +32,7 @@ where
 
 	// the first Option layer represents a pending item for this Throttled stream
 	// The second Option layer contains a future produced by ThrottlePool::queue()
-	pending: Option<Option<Box<Future<Item = (), Error = S::Error>>>>,
+	pending: Option<Option<Box<Future<Item = (), Error = S::Error> + Send>>>,
 }
 
 impl<S> Stream for Throttled<S>
