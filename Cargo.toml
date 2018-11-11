@@ -8,6 +8,7 @@ authors = ["Mike Caines"]
 repository = "https://github.com/mikecaines/stream-throttle"
 categories = ["asynchronous"]
 keywords = ["async", "futures", "stream", "throttle"]
+documentation = "https://docs.rs/stream_throttle/"
 
 [dependencies]
 failure = "0.1"
