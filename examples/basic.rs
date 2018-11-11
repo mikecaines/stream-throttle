@@ -1,5 +1,6 @@
 extern crate futures;
 extern crate stream_throttle;
+extern crate tokio;
 extern crate tokio_timer;
 
 use futures::prelude::*;
@@ -7,7 +8,7 @@ use futures::stream;
 use std::time::{Duration, Instant};
 use stream_throttle::{ThrottlePool, ThrottleRate, ThrottledStream};
 
-fn main() -> Result<(), ()> {
+fn main() {
 	let rate = ThrottleRate::new(5, Duration::new(2, 0));
 	println!("{:?}", rate);
 
@@ -71,5 +72,5 @@ fn main() -> Result<(), ()> {
 			Ok(())
 		});
 
-	work.wait()
+	tokio::run(work);
 }
