@@ -16,7 +16,7 @@ and not via any sort of buffering.
 
 ## Example throttling of `Stream`
 ```rust
-let rate = ThrottleRate::new(5, Duration::new(2, 0));
+let rate = ThrottleRate::new(5, Duration::new(1, 0));
 let pool = ThrottlePool::new(rate);
 
 let work = stream::repeat(())
@@ -28,7 +28,7 @@ tokio::run(work);
 
 ## Example throttling of `Future`
 ```rust
-let rate = ThrottleRate::new(5, Duration::new(2, 0));
+let rate = ThrottleRate::new(5, Duration::new(1, 0));
 let pool = ThrottlePool::new(rate);
 
 let work = pool.queue()

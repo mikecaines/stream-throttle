@@ -9,7 +9,7 @@ use std::time::{Duration, Instant};
 use stream_throttle::{ThrottlePool, ThrottleRate, ThrottledStream};
 
 fn main() {
-	let rate = ThrottleRate::new(5, Duration::new(2, 0));
+	let rate = ThrottleRate::new(5, Duration::new(1, 0));
 	println!("{:?}", rate);
 
 	let pool = ThrottlePool::new(rate);
