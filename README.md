@@ -31,7 +31,7 @@ tokio::run(work);
 let rate = ThrottleRate::new(5, Duration::new(2, 0));
 let pool = ThrottlePool::new(rate);
 
-pool.queue()
+let work = pool.queue()
   .then(|_| Ok(()));
   
 tokio::run(work);
