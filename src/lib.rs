@@ -61,6 +61,8 @@ extern crate futures_util;
 #[macro_use]
 extern crate failure_derive;
 extern crate failure;
+#[cfg(test)]
+extern crate async_std;
 
 pub mod error;
 mod pool;

@@ -1,12 +1,15 @@
-use super::ThrottleRate;
-use error::{Error};
-use futures::stream;
-use futures::{Future, Stream};
-use futures_timer;
-use futures_util::compat::{Compat};
-use futures_util::FutureExt;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
+
+use futures::{Future, Stream};
+use futures::stream;
+use futures_timer;
+use futures_util::compat::Compat;
+use futures_util::FutureExt;
+
+use error::Error;
+
+use super::ThrottleRate;
 
 /// A clonable object which is used to throttle one or more streams, according to a shared rate.
 #[derive(Clone)]
@@ -94,18 +97,21 @@ impl ThrottlePool {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+	use async_std;
+	use futures_util::compat::Compat01As03;
 
-    #[test]
-    fn can_complete() {
+	use super::*;
+
+	#[test]
+	fn can_complete() {
 		let pool = ThrottlePool::new(ThrottleRate::new(1, Duration::from_millis(1)));
 
 		let work = pool.queue().map(|_| 1);
 
-		let all = tokio::runtime::current_thread::block_on_all(work);
+		let result = tokio::runtime::current_thread::block_on_all(work);
 
-		assert_eq!(all.unwrap(), 1)
-    }
+		assert_eq!(result.unwrap(), 1)
+	}
 
     #[test]
     fn can_complete_multiple() {
@@ -142,5 +148,19 @@ mod tests {
 
 		assert!(time_taken_ms > (3 * delay_ms));
 		assert!(time_taken_ms < (4 * delay_ms))
-    }
+	}
+
+	#[test]
+	fn works_with_async_std() {
+		let pool = ThrottlePool::new(ThrottleRate::new(1, Duration::from_millis(10)));
+
+		let work1 = pool.queue().map(|_| 1);
+		let work2 = pool.queue().map(|_| 2);
+
+		let work = Compat01As03::new(work1.join(work2));
+
+		let result = async_std::task::block_on(work);
+
+		assert_eq!(result.unwrap(), (1, 2))
+	}
 }
