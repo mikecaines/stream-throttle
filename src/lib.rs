@@ -56,7 +56,8 @@
 extern crate log;
 #[macro_use]
 extern crate futures;
-extern crate tokio_timer;
+extern crate futures_timer;
+extern crate futures_util;
 #[macro_use]
 extern crate failure_derive;
 extern crate failure;
