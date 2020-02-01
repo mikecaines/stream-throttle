@@ -16,14 +16,16 @@ and not via any sort of buffering.
 
 ## Example throttling of `Stream`
 ```rust
+// allow no more than 5 items every 1 second
 let rate = ThrottleRate::new(5, Duration::new(1, 0));
 let pool = ThrottlePool::new(rate);
 
 let work = stream::repeat(())
   .throttle(pool)
-  .for_each(|_| Ok(()));
+  .then(|_| futures::future::ready("do something else"))
+  .for_each(|_| futures::future::ready(()));
   
-tokio::run(work);
+work.await;
 ```
 
 ## Example throttling of `Future`
@@ -32,7 +34,7 @@ let rate = ThrottleRate::new(5, Duration::new(1, 0));
 let pool = ThrottlePool::new(rate);
 
 let work = pool.queue()
-  .then(|_| Ok(()));
+  .then(|_| futures::future::ready("do something else"));
   
-tokio::run(work);
+work.await;
 ```
