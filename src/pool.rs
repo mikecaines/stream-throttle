@@ -55,7 +55,7 @@ impl ThrottlePool {
 								return None; // let the stream end
 							} else {
 								// if the slot's expiry is the earliest one we've encountered, use it
-								sleep = ::std::cmp::min(*slot - now, sleep);
+								sleep = std::cmp::min(*slot - now, sleep);
 							}
 						}
 						// else we couldn't lock the mutex
@@ -65,7 +65,7 @@ impl ThrottlePool {
 						}
 					}
 
-					if log_enabled!(::log::Level::Trace) {
+					if log_enabled!(log::Level::Trace) {
 						trace!("Sleeping for {:?}", sleep);
 					}
 
