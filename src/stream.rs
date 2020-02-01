@@ -1,5 +1,8 @@
 use super::ThrottlePool;
-use futures::{Async, Future, Poll, Stream};
+use futures::task::{Context, Poll};
+use futures::{ready, Future, FutureExt, Stream};
+use pin_utils::{unsafe_pinned, unsafe_unpinned};
+use std::pin::Pin;
 
 /// Provides a `throttle()` method on all `Stream`'s.
 pub trait ThrottledStream {
@@ -10,9 +13,10 @@ pub trait ThrottledStream {
 		Self: Stream + Sized,
 	{
 		Throttled {
-			stream: self,
+			stream_pinned: self,
 			pool,
-			pending: None,
+			state_unpinned: State::None,
+			slot_pinned: None,
 		}
 	}
 }
@@ -27,12 +31,21 @@ pub struct Throttled<S>
 where
 	S: Stream + 'static,
 {
-	stream: S,
+	stream_pinned: S,
 	pool: ThrottlePool,
+	state_unpinned: State,
+	slot_pinned: Option<Pin<Box<dyn Future<Output = ()> + Send + 'static>>>,
+}
 
-	// the first Option layer represents a pending item for this Throttled stream
-	// The second Option layer contains a future produced by ThrottlePool::queue()
-	pending: Option<Option<Box<Future<Item = (), Error = S::Error> + Send>>>,
+impl<S> Throttled<S>
+where
+	S: Stream + 'static,
+{
+	// This was used as a guide:
+	// https://docs.rs/futures-util/0.3.1/src/futures_util/stream/stream/take_while.rs.html#101
+	unsafe_pinned!(stream_pinned: S);
+	unsafe_unpinned!(state_unpinned: State);
+	unsafe_pinned!(slot_pinned: Option<Pin<Box<dyn Future<Output = ()> + Send + 'static>>>);
 }
 
 impl<S> Stream for Throttled<S>
@@ -40,36 +53,45 @@ where
 	S: Stream,
 {
 	type Item = S::Item;
-	type Error = S::Error;
 
 	/// Calls ThrottlePool::queue() to get slot in the throttle queue, waits for it to resolve, and
 	/// then polls the underlying stream for an item, and produces it.
-	fn poll(&mut self) -> Poll<Option<S::Item>, S::Error> {
-		// if we don't already have a pending item, get one
-		if self.pending.is_none() {
-			self.pending = Some(Some(Box::new(
-				self.pool
-					.queue()
-					.map_err(|e| panic!("ThrottlePool::queue() failed: {}", e)),
-			)));
-		}
-		assert!(self.pending.is_some());
-
-		// if we have a queue() future, we are still waiting for the queue slot to expire
-		if self.pending.as_mut().unwrap().is_some() {
-			// poll the queue slot future, and remove it once it resolves
-			try_ready!(self.pending.as_mut().unwrap().as_mut().unwrap().poll());
-			self.pending.as_mut().unwrap().take();
+	fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+		if let State::None = self.state_unpinned {
+			let slot = self.pool.queue().boxed();
+			self.as_mut().slot_pinned().set(Some(slot));
+			*self.as_mut().state_unpinned() = State::Slot;
 		}
 
-		// poll the underlying stream until we get an item, or the stream ends
-		match try_ready!(self.stream.poll()) {
-			Some(item) => {
-				self.pending = None;
-				Ok(Async::Ready(Some(item)))
+		if let State::Slot = self.state_unpinned {
+			let _ = ready!(self.as_mut().slot_pinned().as_pin_mut().unwrap().poll(cx));
+			self.as_mut().slot_pinned().set(None);
+			*self.as_mut().state_unpinned() = State::Stream;
+		}
+
+		if let State::Stream = self.state_unpinned {
+			if let Some(item) = ready!(self.as_mut().stream_pinned().poll_next(cx)) {
+				*self.as_mut().state_unpinned() = State::None;
+				return Poll::Ready(Some(item));
+			} else {
+				*self.as_mut().state_unpinned() = State::Done;
 			}
-
-			None => Ok(Async::Ready(None)),
 		}
+
+		Poll::Ready(None)
 	}
+}
+
+enum State {
+	// the stream has not been polled yet, or in the previous poll returned an item
+	None,
+
+	// we are polling the internal ThrottlePool::queue() slot
+	Slot,
+
+	// we are polling the internal Stream
+	Stream,
+
+	// the internal stream has ended, nothing more to do
+	Done,
 }

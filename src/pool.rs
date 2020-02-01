@@ -1,11 +1,8 @@
 use super::ThrottleRate;
-use error::{Error, ErrorKind};
-use failure::Fail;
-use futures::stream;
-use futures::{Future, Stream};
+use futures::{Future, StreamExt};
+use log::{log_enabled, trace};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
-use tokio_timer;
 
 /// A clonable object which is used to throttle one or more streams, according to a shared rate.
 #[derive(Clone)]
@@ -40,9 +37,9 @@ impl ThrottlePool {
 	/// underlying stream produces. These futures are driven to completion by polling the
 	/// `Throttled` stream. In the process, these futures will drive the `ThrottlePool`,
 	/// freeing up slots.
-	pub fn queue(&self) -> impl Future<Item = (), Error = Error> {
-		stream::repeat(())
-			.and_then({
+	pub fn queue(&self) -> impl Future<Output = ()> {
+		futures::stream::repeat(())
+			.map({
 				let inner = self.inner.clone();
 				move |_| {
 					let now = Instant::now();
@@ -55,7 +52,7 @@ impl ThrottlePool {
 								// the slot is expired/free
 								// set the slot's new expiry instant to be now + rate.duration
 								*slot = now + inner.rate_duration;
-								return Ok(None); // let the stream end
+								return None; // let the stream end
 							} else {
 								// if the slot's expiry is the earliest one we've encountered, use it
 								sleep = ::std::cmp::min(*slot - now, sleep);
@@ -64,7 +61,7 @@ impl ThrottlePool {
 						// else we couldn't lock the mutex
 						else {
 							// just let the stream iterate one item, and try again
-							return Ok(Some(Duration::from_secs(0)));
+							return Some(Duration::from_secs(0));
 						}
 					}
 
@@ -72,16 +69,16 @@ impl ThrottlePool {
 						trace!("Sleeping for {:?}", sleep);
 					}
 
-					Ok(Some(sleep))
+					Some(sleep)
 				}
-			}).take_while(|sleep| Ok(sleep.is_some()))
-			.and_then({
+			})
+			.take_while(|sleep| futures::future::ready(sleep.is_some()))
+			.then({
 				move |sleep| {
 					// sleep for the required duration
-					tokio_timer::sleep(sleep.unwrap_or_else(|| Duration::from_secs(0)))
-						.map_err(|e| e.context(ErrorKind::Timer("queue future could not sleep")))
+					tokio::time::delay_for(sleep.unwrap_or_else(|| Duration::from_secs(0)))
 				}
-			}).for_each(|_| Ok(()))
-			.from_err()
+			})
+			.for_each(|_| futures::future::ready(()))
 	}
 }
