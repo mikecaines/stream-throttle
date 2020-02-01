@@ -45,7 +45,7 @@ impl ThrottlePool {
 					let now = Instant::now();
 					let mut sleep = inner.rate_duration;
 
-					for mut slot in &inner.slots {
+					for slot in &inner.slots {
 						if let Ok(mut slot) = slot.try_lock() {
 							// if the slot's instant is in the past
 							if *slot <= now {
