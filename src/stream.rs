@@ -86,7 +86,7 @@ enum State {
 	// the stream has not been polled yet, or in the previous poll returned an item
 	None,
 
-	// we are polling the internal ThrottlePool::queue() slot
+	// we are polling the internal ThrottlePool::queue() slot Future
 	Slot,
 
 	// we are polling the internal Stream
