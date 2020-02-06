@@ -57,46 +57,50 @@ where
 	/// Calls ThrottlePool::queue() to get slot in the throttle queue, waits for it to resolve, and
 	/// then polls the underlying stream for an item, and produces it.
 	fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Option<Self::Item>> {
-		if let State::None = self.state_unpinned {
-			// get a slot future from the pool, and store it
-			let slot = self.pool.queue().boxed();
-			self.as_mut().slot_pinned().set(Some(slot));
+		loop {
+			match self.state_unpinned {
+				State::None => {
+					// get a slot future from the pool, and store it
+					let slot = self.pool.queue().boxed();
+					self.as_mut().slot_pinned().set(Some(slot));
 
-			*self.as_mut().state_unpinned() = State::Slot;
-		}
+					*self.as_mut().state_unpinned() = State::Slot;
+				}
 
-		if let State::Slot = self.state_unpinned {
-			// poll the slot future
-			let _ = ready!(self
-				.as_mut()
-				.slot_pinned()
-				.as_pin_mut()
-				.expect("impossible: slot future was None, during State::Slot")
-				.poll(cx));
+				State::Slot => {
+					// poll the slot future
+					let _ = ready!(self
+						.as_mut()
+						.slot_pinned()
+						.as_pin_mut()
+						.expect("impossible: slot future was None, during State::Slot")
+						.poll(cx));
 
-			// clear the slot future, now that it has finished
-			self.as_mut().slot_pinned().set(None);
+					// clear the slot future, now that it has finished
+					self.as_mut().slot_pinned().set(None);
 
-			*self.as_mut().state_unpinned() = State::Stream;
-		}
+					*self.as_mut().state_unpinned() = State::Stream;
+				}
 
-		if let State::Stream = self.state_unpinned {
-			// if polling the internal stream produced an item
-			if let Some(item) = ready!(self.as_mut().stream_pinned().poll_next(cx)) {
-				// reset the state to None
-				*self.as_mut().state_unpinned() = State::None;
+				State::Stream => {
+					// if polling the internal stream produced an item
+					if let Some(item) = ready!(self.as_mut().stream_pinned().poll_next(cx)) {
+						// reset the state to None
+						*self.as_mut().state_unpinned() = State::None;
 
-				// return the item from the internal stream
-				return Poll::Ready(Some(item));
+						// return the item from the internal stream
+						return Poll::Ready(Some(item));
+					}
+					// else the internal stream has ended
+					else {
+						// set the state to Done, from which it will never change again
+						*self.as_mut().state_unpinned() = State::Done;
+					}
+				}
+
+				State::Done => return Poll::Ready(None),
 			}
-			// else the internal stream has ended
-			else {
-				// set the state to Done, from which it will never change again
-				*self.as_mut().state_unpinned() = State::Done;
-			}
 		}
-
-		Poll::Ready(None)
 	}
 }
 
