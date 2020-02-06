@@ -56,7 +56,7 @@ where
 
 	/// Calls ThrottlePool::queue() to get slot in the throttle queue, waits for it to resolve, and
 	/// then polls the underlying stream for an item, and produces it.
-	fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+	fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Option<Self::Item>> {
 		if let State::None = self.state_unpinned {
 			// get a slot future from the pool, and store it
 			let slot = self.pool.queue().boxed();
