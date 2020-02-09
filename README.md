@@ -1,7 +1,7 @@
 # stream_throttle
 Provides a 
 [Rust](https://www.rust-lang.org) 
-[`Stream`](https://docs.rs/futures/0.1.21/futures/stream/trait.Stream.html)
+[`Stream`](https://docs.rs/futures/0.3/futures/stream/trait.Stream.html)
 combinator, to limit the rate at which items are produced.
 
 [![Crates.io](https://img.shields.io/crates/v/stream_throttle.svg)](https://crates.io/crates/stream_throttle)
@@ -9,10 +9,18 @@ combinator, to limit the rate at which items are produced.
 
 ## Key Features
 - Throttling is implemented via
-[`poll()`](https://docs.rs/futures/0.1.21/futures/future/trait.Future.html#tymethod.poll), 
+[`poll()`](https://docs.rs/futures/0.3/futures/future/trait.Future.html#tymethod.poll), 
 and not via any sort of buffering.
 - The throttling behaviour can be applied to both `Stream`'s and `Future`'s.
 - Multiple streams/futures can be throttled together as a group.
+- Feature flags to use various timer implementations.
+
+## Feature Flags
+- `timer-tokio`: Uses the `tokio::time::delay_for()` timer.
+- `timer-futures-timer`: Uses the `futures_timer::Delay` timer.
+
+If you don't use the default timer (`tokio`), make sure to set `default-features = false`
+in your `Cargo.toml`, when you add `stream_throttle` as a dependency.
 
 ## Example throttling of `Stream`
 ```rust

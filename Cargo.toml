@@ -15,8 +15,23 @@ edition = "2018"
 [dependencies]
 log = "0.4.8"
 futures = "0.3.1"
-tokio = {version="0.2.11", features=["time"]}
 pin-utils = "0.1.0-alpha.4"
+tokio = {version = "0.2.11", optional = true, features = ["time"]}
+futures-timer = {version = "3.0.1", optional = true}
+
+[features]
+default = ["timer-tokio"]
+timer-tokio = ["tokio"]
+timer-futures-timer = ["futures-timer"]
 
 [dev-dependencies]
-tokio = {version="0.2.11", features=["full"]}
+tokio = {version = "0.2.11", features = ["full"]}
+async-std = {version = "1", features = ["attributes"]}
+
+[[example]]
+name = "multi_stream_tokio"
+required-features = ["timer-tokio"]
+
+[[example]]
+name = "multi_stream_async_std"
+required-features = ["timer-futures-timer"]

@@ -76,9 +76,19 @@ impl ThrottlePool {
 			.then({
 				move |sleep| {
 					// sleep for the required duration
-					tokio::time::delay_for(sleep.unwrap_or_else(|| Duration::from_secs(0)))
+					delay_for(sleep.unwrap_or_else(|| Duration::from_secs(0)))
 				}
 			})
 			.for_each(|_| futures::future::ready(()))
 	}
+}
+
+#[cfg(feature = "timer-tokio")]
+fn delay_for(dur: Duration) -> impl Future<Output = ()> {
+	tokio::time::delay_for(dur)
+}
+
+#[cfg(feature = "timer-futures-timer")]
+fn delay_for(dur: Duration) -> impl Future<Output = ()> {
+	futures_timer::Delay::new(dur)
 }

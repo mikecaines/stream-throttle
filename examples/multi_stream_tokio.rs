@@ -1,5 +1,4 @@
-extern crate futures;
-extern crate stream_throttle;
+#![cfg(feature = "timer-tokio")]
 
 use futures::prelude::*;
 use futures::stream;
