@@ -85,7 +85,7 @@ impl ThrottlePool {
 
 #[cfg(feature = "timer-tokio")]
 fn delay_for(dur: Duration) -> impl Future<Output = ()> {
-	tokio::time::delay_for(dur)
+	tokio::time::sleep(dur)
 }
 
 #[cfg(feature = "timer-futures-timer")]
