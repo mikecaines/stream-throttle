@@ -10,7 +10,7 @@ categories = ["asynchronous"]
 keywords = ["async", "futures", "stream", "throttle"]
 documentation = "https://docs.rs/stream_throttle/"
 
-edition = "2018"
+edition = "2021"
 
 [dependencies]
 log = "0.4.8"

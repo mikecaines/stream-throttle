@@ -38,48 +38,42 @@ impl ThrottlePool {
 	/// `Throttled` stream. In the process, these futures will drive the `ThrottlePool`,
 	/// freeing up slots.
 	pub fn queue(&self) -> impl Future<Output = ()> {
-		futures::stream::repeat(())
-			.map({
-				let inner = self.inner.clone();
-				move |_| {
-					let now = Instant::now();
-					let mut sleep = inner.rate_duration;
+		let inner = self.inner.clone();
+		async move {
+			loop {
+				let now = Instant::now();
+				let mut sleep = inner.rate_duration;
 
-					for slot in &inner.slots {
-						if let Ok(mut slot) = slot.try_lock() {
-							// if the slot's instant is in the past
-							if *slot <= now {
-								// the slot is expired/free
-								// set the slot's new expiry instant to be now + rate.duration
-								*slot = now + inner.rate_duration;
-								return None; // let the stream end
-							} else {
-								// if the slot's expiry is the earliest one we've encountered, use it
-								sleep = std::cmp::min(*slot - now, sleep);
-							}
-						}
-						// else we couldn't lock the mutex
-						else {
-							// just let the stream iterate one item, and try again
-							return Some(Duration::from_secs(0));
+				for slot in &inner.slots {
+					if let Ok(mut slot) = slot.try_lock() {
+						// if the slot's instant is in the past
+						if *slot <= now {
+							// the slot is expired/free
+							// set the slot's new expiry instant to be now + rate.duration
+							*slot = now + inner.rate_duration;
+
+							// let the stream end
+							return;
+						} else {
+							// if the slot's expiry is the earliest one we've encountered, use it
+							sleep = std::cmp::min(*slot - now, sleep);
 						}
 					}
-
-					if log_enabled!(log::Level::Trace) {
-						trace!("Sleeping for {:?}", sleep);
+					// else we couldn't lock the mutex
+					else {
+						// just let the stream iterate one item, and try again
+						sleep = Duration::from_secs(0);
+						break;
 					}
+				}
 
-					Some(sleep)
+				if log_enabled!(log::Level::Trace) {
+					trace!("Sleeping for {:?}", sleep);
 				}
-			})
-			.take_while(|sleep| futures::future::ready(sleep.is_some()))
-			.then({
-				move |sleep| {
-					// sleep for the required duration
-					delay_for(sleep.unwrap_or_else(|| Duration::from_secs(0)))
-				}
-			})
-			.for_each(|_| futures::future::ready(()))
+
+				delay_for(sleep).await;
+			}
+		}
 	}
 }
 
