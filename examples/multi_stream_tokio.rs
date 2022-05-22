@@ -51,23 +51,22 @@ async fn main() {
 	let mut last_instant = Instant::now();
 	let mut index = 0;
 
-	let work = futures::stream::select(stream1, stream2);
-	let work = futures::stream::select(work, stream3);
-	let work = work.for_each(move |name| {
-		let now_instant = Instant::now();
+	let work = futures::stream::select_all([stream1.boxed(), stream2.boxed(), stream3.boxed()])
+		.for_each(move |name| {
+			let now_instant = Instant::now();
 
-		println!(
-			"{:02} ({}) item delayed: {:?}",
-			index,
-			name,
-			now_instant.duration_since(last_instant)
-		);
+			println!(
+				"{:02} ({}) item delayed: {:?}",
+				index,
+				name,
+				now_instant.duration_since(last_instant)
+			);
 
-		last_instant = now_instant;
-		index += 1;
+			last_instant = now_instant;
+			index += 1;
 
-		futures::future::ready(())
-	});
+			futures::future::ready(())
+		});
 
 	work.await;
 }
